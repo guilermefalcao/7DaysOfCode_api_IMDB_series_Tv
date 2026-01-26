@@ -1,15 +1,17 @@
 # 7DaysOfCode - API IMDB
 
-Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dia 1.
+Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dias 1 e 2.
 
 ## Descrição
-API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie Database), permitindo buscar informações sobre filmes.
+API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie Database), permitindo buscar informações sobre filmes com testes de integração.
 
 ## Tecnologias Utilizadas
 - Java 17
-- Spring Boot 4.0.2
+- Spring Boot 3.2.2
 - Spring Web
 - RestTemplate
+- JUnit 5
+- TestRestTemplate
 - Maven
 
 ## Pré-requisitos
@@ -27,6 +29,17 @@ API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie
 - Copie a API Key recebida
 
 ### 2. Configurar a API Key
+
+**Opção 1 - Variável de Ambiente (Recomendado):**
+```bash
+# Windows PowerShell
+$env:OMDB_API_KEY="SUA_CHAVE_AQUI"
+
+# Windows CMD
+set OMDB_API_KEY=SUA_CHAVE_AQUI
+```
+
+**Opção 2 - Arquivo Local:**
 Edite o arquivo `src/main/resources/application.properties` e substitua `YOUR_API_KEY` pela sua chave:
 
 ```properties
@@ -45,6 +58,24 @@ Ou no Windows:
 ```bash
 mvnw.cmd spring-boot:run
 ```
+
+## Como Executar os Testes
+
+### Executar todos os testes:
+```bash
+mvnw test
+```
+
+### Executar testes no Windows:
+```bash
+mvnw.cmd test
+```
+
+### Testes Implementados:
+- ✅ **contextLoads()** - Verifica se a aplicação inicializa
+- ✅ **shouldReturnMoviesWhenSearchingByTitle()** - Testa busca por título
+- ✅ **shouldReturnMovieWhenSearchingById()** - Testa busca por ID
+- ✅ **shouldStartOnRandomPort()** - Verifica porta aleatória
 
 ## Como Testar
 
@@ -84,10 +115,17 @@ src/main/java/com/imdb/api/
 ├── ImdbApiApplication.java      # Classe principal com Bean do RestTemplate
 └── controller/
     └── MovieController.java     # Controller REST com endpoints GET
+
+src/test/java/com/imdb/api/
+└── ImdbApiApplicationTests.java # Testes de integração dos endpoints
+
+src/test/resources/
+└── application-test.properties  # Configurações para testes
 ```
 
 ## Funcionamento
 
+### **Aplicação Principal:**
 1. **ImdbApiApplication**: Classe principal que configura o Bean do RestTemplate
    - `@SpringBootApplication`: Marca a classe como aplicação Spring Boot
    - `@Bean`: Cria e disponibiliza o RestTemplate para injeção de dependência
@@ -99,6 +137,20 @@ src/main/java/com/imdb/api/
    - `@GetMapping("/{imdbId}")`: Busca filme por ID do IMDB
    - Usa `RestTemplate.getForEntity()` para fazer requisição HTTP
    - Imprime o JSON no console e retorna como resposta
+
+### **Testes de Integração:**
+3. **ImdbApiApplicationTests**: Classe de testes que valida os endpoints
+   - `@SpringBootTest(webEnvironment = RANDOM_PORT)`: Sobe a aplicação em porta aleatória
+   - `@LocalServerPort`: Injeta a porta onde a aplicação está rodando
+   - `RestTemplate`: Cliente HTTP para fazer requisições nos testes
+   - **Testa status 200 OK** e **conteúdo não vazio** nas respostas
+   - **Valida JSON** da OMDb API nos endpoints
+
+### **Segurança:**
+4. **Variáveis de Ambiente**: Chave da API protegida
+   - `${OMDB_API_KEY:fallback}`: Lê da variável de ambiente
+   - `.env` no .gitignore
+   - **Nunca commita chaves** no repositório
 
 ## Resposta Esperada
 
@@ -136,23 +188,14 @@ src/main/java/com/imdb/api/
 }
 ```
 
-## Comandos Git para Subir no Repositório
 
-```bash
-cd "C:\1. Guilherme\00. Dataprev\0000. projeto conta\cursoSpringboot\7DaysOfCode_api_IMDB_series_Tv"
-
-git add .
-git commit -m "Dia 1: Implementação inicial - Consumo da OMDb API para buscar filmes"
-git branch -M main
-git remote add origin https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv.git
-git push -u origin main
 ```
 
 ## Autor
 Guilherme Falcão
 
 ## Curso
-Alura - #7DaysOfCode - Dia 1
+Alura - #7DaysOfCode - Dias 1 e 2
 
 ## Repositório
 https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv

@@ -35,3 +35,6 @@ build/
 ### API Keys ###
 .env
 application.properties
+
+### Test Resources ###
+src/test/resources/application-test.properties
