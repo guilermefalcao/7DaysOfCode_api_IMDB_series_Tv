@@ -1,6 +1,6 @@
 # 7DaysOfCode - API IMDB
 
-Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dias 1 e 2.
+Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dias 1, 2 e 3.
 
 ## Descrição
 API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie Database), permitindo buscar informações sobre filmes com testes de integração.
@@ -113,8 +113,13 @@ Invoke-WebRequest -Uri http://localhost:8080/api/movies/tt0133093
 ```
 src/main/java/com/imdb/api/
 ├── ImdbApiApplication.java      # Classe principal com Bean do RestTemplate
-└── controller/
-    └── MovieController.java     # Controller REST com endpoints GET
+├── controller/
+│   └── MovieController.java     # Controller REST com endpoints GET
+├── service/
+│   └── MovieService.java        # Service para processar JSON
+└── model/
+    ├── Movie.java               # Record que representa um filme
+    └── MovieSearchResult.java   # Record com lista de filmes
 
 src/test/java/com/imdb/api/
 └── ImdbApiApplicationTests.java # Testes de integração dos endpoints
@@ -195,7 +200,7 @@ src/test/resources/
 Guilherme Falcão
 
 ## Curso
-Alura - #7DaysOfCode - Dias 1 e 2
+Alura - #7DaysOfCode - Dias 1, 2 e 3
 
 ## Repositório
 https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv
