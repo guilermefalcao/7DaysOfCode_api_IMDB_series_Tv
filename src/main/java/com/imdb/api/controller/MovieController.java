@@ -1,10 +1,12 @@
 package com.imdb.api.controller;
 
+import com.imdb.api.generator.HTMLGenerator;
 import com.imdb.api.model.Movie;
 import com.imdb.api.model.MovieSearchResult;
 import com.imdb.api.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.StringWriter;
 
 // Indica que esta classe é um controlador REST
 @RestController
@@ -75,6 +79,26 @@ public class MovieController {
         
         // Retorna o objeto Movie (Spring converte automaticamente para JSON)
         return movie;
+    }
+
+    // NOVO: Endpoint que retorna HTML com grid de filmes usando Bootstrap
+    // Exemplo: /api/movies/html?title=Matrix
+    @GetMapping(value = "/html", produces = MediaType.TEXT_HTML_VALUE)
+    public String searchMoviesHTML(@RequestParam String title) {
+        // Busca filmes pela API
+        String url = "http://www.omdbapi.com/?s=" + title + "&apikey=" + apiKey;
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        MovieSearchResult result = movieService.parseSearchResults(response.getBody());
+        
+        // Cria StringWriter para capturar o HTML gerado
+        StringWriter stringWriter = new StringWriter();
+        
+        // Cria HTMLGenerator e gera o HTML
+        HTMLGenerator htmlGenerator = new HTMLGenerator(stringWriter);
+        htmlGenerator.generate(result.movies());
+        
+        // Retorna o HTML gerado
+        return stringWriter.toString();
     }
 
     // Endpoint legado que retorna JSON bruto (mantido para compatibilidade)

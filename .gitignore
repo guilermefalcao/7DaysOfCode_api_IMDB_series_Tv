@@ -38,3 +38,6 @@ application.properties
 
 ### Test Resources ###
 src/test/resources/application-test.properties
+
+### Local Configuration ###
+src/main/resources/application-local.properties

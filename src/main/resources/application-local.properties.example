@@ -1,0 +1,5 @@
+spring.application.name=imdb-api
+
+# OMDb API Configuration - LOCAL
+# Copie este arquivo para application-local.properties e substitua pela sua chave
+omdb.api.key=YOUR_API_KEY
