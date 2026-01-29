@@ -469,3 +469,226 @@ mvnw.cmd test
 - [JUnit 5](https://junit.org/junit5/)
 - [Bootstrap 5](https://getbootstrap.com/)
 - [Text Blocks](https://docs.oracle.com/en/java/javase/17/text-blocks/index.html)
+
+
+---
+
+## 🔧 Aula 5: Refatoração e Encapsulamento
+
+### Objetivo
+Encapsular chamadas HTTP e separar responsabilidades seguindo princípios SOLID.
+
+### O que foi criado
+1. **ImdbApiClient.java** - Cliente HTTP para comunicação com OMDb API
+2. **Refatoração do Controller** - Removida lógica HTTP, apenas orquestra
+3. **Separação clara de responsabilidades** - Cada classe com uma função
+
+### Conceitos Aprendidos
+
+#### **@Component**
+```java
+@Component
+public class ImdbApiClient { }
+```
+
+**O que é:**
+- Marca classe como componente Spring
+- Spring gerencia ciclo de vida (cria, injeta, destrói)
+- Permite injeção em outras classes com @Autowired
+
+**Diferença de outras anotações:**
+- `@Component`: Genérico para qualquer componente
+- `@Service`: Lógica de negócio
+- `@Repository`: Acesso a dados
+- `@Controller`: Controlador web
+
+#### **Encapsulamento de Chamadas HTTP**
+
+**ANTES (Dia 4):**
+```java
+@RestController
+public class MovieController {
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Value("${omdb.api.key}")
+    private String apiKey;
+    
+    @GetMapping("/search")
+    public MovieSearchResult searchMovies(@RequestParam String title) {
+        String url = "http://www.omdbapi.com/?s=" + title + "&apikey=" + apiKey;
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        // ... processar resposta
+    }
+}
+```
+
+**DEPOIS (Dia 5):**
+```java
+@RestController
+public class MovieController {
+    @Autowired
+    private ImdbApiClient imdbApiClient;
+    
+    @GetMapping("/search")
+    public MovieSearchResult searchMovies(@RequestParam String title) {
+        String json = imdbApiClient.searchMoviesByTitle(title);
+        // ... processar resposta
+    }
+}
+```
+
+**Vantagens:**
+- ✅ Controller não conhece detalhes da URL
+- ✅ Controller não conhece API Key
+- ✅ Código mais limpo e legível
+- ✅ Fácil de testar (pode mockar o client)
+- ✅ Fácil de manter (mudanças na API afetam apenas o client)
+
+#### **Single Responsibility Principle (SOLID)**
+
+**Separação de Responsabilidades:**
+
+```
+Controller (MovieController)
+├─ Responsabilidade: Orquestrar fluxo HTTP
+├─ Recebe requisições
+├─ Chama serviços
+└─ Retorna respostas
+
+Client (ImdbApiClient)
+├─ Responsabilidade: Comunicação com API externa
+├─ Constrói URLs
+├─ Gerencia API Key
+└─ Executa requisições HTTP
+
+Service (MovieService)
+├─ Responsabilidade: Processar dados
+├─ Parse JSON
+├─ Converte em objetos
+└─ Valida dados
+
+Model (Movie, MovieSearchResult)
+├─ Responsabilidade: Representar dados
+└─ Estrutura imutável
+
+Generator (HTMLGenerator)
+├─ Responsabilidade: Gerar HTML
+└─ Criar visualização
+```
+
+#### **Injeção de Dependências**
+
+**Como funciona:**
+```java
+// 1. Spring encontra @Component
+@Component
+public class ImdbApiClient { }
+
+// 2. Spring cria instância automaticamente
+
+// 3. Spring injeta onde for solicitado
+@RestController
+public class MovieController {
+    @Autowired
+    private ImdbApiClient imdbApiClient; // Spring injeta aqui
+}
+```
+
+**Vantagens:**
+- ✅ Não precisa usar `new`
+- ✅ Spring gerencia ciclo de vida
+- ✅ Facilita testes (pode injetar mocks)
+- ✅ Desacoplamento
+
+### Comparação: Antes vs Depois
+
+| Aspecto | Antes (Dia 4) | Depois (Dia 5) |
+|---------|---------------|----------------|
+| **Responsabilidades** | Controller faz tudo | Separadas em classes |
+| **Testabilidade** | Difícil | Fácil (mockar client) |
+| **Manutenção** | Mudanças afetam controller | Mudanças isoladas |
+| **Legibilidade** | Código verboso | Código limpo |
+| **Reutilização** | Duplicação de código | Client reutilizável |
+
+### Arquitetura Final (Dia 5)
+
+```
+Cliente (Browser/Postman)
+    ↓
+Controller (MovieController)
+    ├─ Orquestra fluxo
+    ├─ Valida entrada
+    └─ Formata resposta
+    ↓
+Client (ImdbApiClient)
+    ├─ Constrói URL
+    ├─ Adiciona API Key
+    └─ Executa HTTP
+    ↓
+API Externa (OMDb)
+    ↓
+Service (MovieService)
+    ├─ Parse JSON
+    └─ Converte objetos
+    ↓
+Model (Movie)
+    ↓
+Generator (HTMLGenerator)
+    └─ Gera HTML
+    ↓
+Resposta (JSON ou HTML)
+```
+
+### Princípios SOLID Aplicados
+
+1. **S - Single Responsibility**
+   - Cada classe tem uma única responsabilidade
+   - Controller: Orquestra
+   - Client: Comunica
+   - Service: Processa
+   - Model: Representa
+
+2. **O - Open/Closed**
+   - Aberto para extensão (pode adicionar novos clients)
+   - Fechado para modificação (não precisa mudar controller)
+
+3. **D - Dependency Inversion**
+   - Controller depende de abstrações (interfaces)
+   - Não depende de implementações concretas
+
+### Resultado
+Código mais limpo, organizado e seguindo boas práticas de engenharia de software.
+
+---
+
+## 📊 Estatísticas Atualizadas (Dia 5)
+
+- **Linhas de Código**: ~1000
+- **Classes**: 8 (+1 ImdbApiClient)
+- **Testes**: 4
+- **Endpoints**: 5
+- **Dependências**: 3 (Spring Web, Jackson, DevTools)
+- **Princípios SOLID**: ✅ Aplicados
+
+---
+
+## 🎓 Lições Aprendidas (Dia 5)
+
+### Refatoração
+1. **Encapsular** lógica complexa em classes dedicadas
+2. **Separar** responsabilidades claramente
+3. **Reutilizar** código através de componentes
+4. **Testar** fica mais fácil com código desacoplado
+
+### Boas Práticas
+1. **@Component** para classes reutilizáveis
+2. **@Autowired** para injeção de dependências
+3. **Single Responsibility** - uma classe, uma função
+4. **Código limpo** - fácil de ler e manter
+
+### Arquitetura
+1. **Camadas bem definidas**: Controller → Client → Service → Model
+2. **Baixo acoplamento**: Mudanças isoladas
+3. **Alta coesão**: Classes focadas
+4. **Fácil manutenção**: Código organizado

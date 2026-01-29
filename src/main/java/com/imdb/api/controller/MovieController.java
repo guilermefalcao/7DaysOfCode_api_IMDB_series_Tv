@@ -1,112 +1,126 @@
 package com.imdb.api.controller;
 
+import com.imdb.api.client.ImdbApiClient;
 import com.imdb.api.generator.HTMLGenerator;
 import com.imdb.api.model.Movie;
 import com.imdb.api.model.MovieSearchResult;
 import com.imdb.api.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.StringWriter;
 
-// Indica que esta classe é um controlador REST
+/**
+ * Controller REST para endpoints de filmes.
+ * 
+ * REFATORAÇÃO DIA 5:
+ * - Removida lógica de chamada HTTP (agora no ImdbApiClient)
+ * - Separados endpoints JSON e HTML
+ * - Controller mais limpo e focado em orquestrar
+ * - Seguindo Single Responsibility Principle
+ */
 @RestController
 @RequestMapping("/api/movies")
 public class MovieController {
 
-    // Injeta o RestTemplate configurado na classe principal
+    // Injeta o cliente HTTP para comunicação com OMDb API
+    // ANTES: Tinha RestTemplate e construía URLs manualmente
+    // AGORA: Usa ImdbApiClient que encapsula toda a lógica HTTP
     @Autowired
-    private RestTemplate restTemplate;
+    private ImdbApiClient imdbApiClient;
 
     // Injeta o MovieService para processar JSON
     @Autowired
     private MovieService movieService;
 
-    // Lê a API Key do arquivo application.properties
-    @Value("${omdb.api.key}")
-    private String apiKey;
-
-    // Endpoint GET que busca filmes por título e retorna objetos Movie
-    // Exemplo: /api/movies/search?title=Matrix
+    /**
+     * Endpoint JSON: Busca filmes por título e retorna objetos Movie.
+     * 
+     * SEPARAÇÃO DE RESPONSABILIDADES:
+     * - Controller: Orquestra o fluxo
+     * - ImdbApiClient: Faz chamada HTTP
+     * - MovieService: Processa JSON
+     * - Model: Representa dados
+     * 
+     * Exemplo: GET /api/movies/search?title=Matrix
+     */
     @GetMapping("/search")
     public MovieSearchResult searchMovies(@RequestParam String title) {
-        // URL da OMDb API para buscar por título (usando HTTP)
-        String url = "http://www.omdbapi.com/?s=" + title + "&apikey=" + apiKey;
+        // 1. Busca JSON da API (encapsulado no client)
+        String json = imdbApiClient.searchMoviesByTitle(title);
         
-        // Realiza a requisição HTTP GET e captura a resposta
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        // 2. Processa JSON e converte em objetos Movie
+        MovieSearchResult result = movieService.parseSearchResults(json);
         
-        // Processa o JSON e converte em objetos Movie
-        MovieSearchResult result = movieService.parseSearchResults(response.getBody());
+        // 3. Log para debug
+        System.out.println("✅ Busca por título: " + title);
+        System.out.println("   Total de resultados: " + result.totalResults());
+        System.out.println("   Filmes encontrados: " + result.count());
         
-        // Imprime informações no console
-        System.out.println("=== Busca por título: " + title + " ===");
-        System.out.println("Total de resultados: " + result.totalResults());
-        System.out.println("Filmes encontrados: " + result.count());
-        result.movies().forEach(movie -> 
-            System.out.println("  - " + movie.title() + " (" + movie.year() + ")")
-        );
-        
-        // Retorna o objeto MovieSearchResult (Spring converte automaticamente para JSON)
+        // 4. Retorna objeto (Spring converte para JSON automaticamente)
         return result;
     }
 
-    // Endpoint GET que busca filme por ID do IMDB e retorna objeto Movie
-    // Exemplo: /api/movies/tt0133093
+    /**
+     * Endpoint JSON: Busca filme por ID do IMDB e retorna objeto Movie.
+     * 
+     * Exemplo: GET /api/movies/tt0133093
+     */
     @GetMapping("/{imdbId}")
     public Movie getMovieById(@PathVariable String imdbId) {
-        // URL da OMDb API para buscar por ID (usando HTTP)
-        String url = "http://www.omdbapi.com/?i=" + imdbId + "&apikey=" + apiKey;
+        // 1. Busca JSON da API (encapsulado no client)
+        String json = imdbApiClient.getMovieById(imdbId);
         
-        // Realiza a requisição HTTP GET e captura a resposta
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        // 2. Processa JSON e converte em objeto Movie
+        Movie movie = movieService.parseMovieDetails(json);
         
-        // Processa o JSON e converte em objeto Movie
-        Movie movie = movieService.parseMovieDetails(response.getBody());
+        // 3. Log para debug
+        System.out.println("✅ Busca por ID: " + imdbId);
+        System.out.println("   Filme: " + movie.title() + " (" + movie.year() + ")");
+        System.out.println("   Nota: " + movie.rating());
         
-        // Imprime informações no console
-        System.out.println("=== Busca por ID: " + imdbId + " ===");
-        System.out.println("Filme: " + movie.title() + " (" + movie.year() + ")");
-        System.out.println("Nota: " + movie.rating());
-        
-        // Retorna o objeto Movie (Spring converte automaticamente para JSON)
+        // 4. Retorna objeto (Spring converte para JSON automaticamente)
         return movie;
     }
 
-    // NOVO: Endpoint que retorna HTML com grid de filmes usando Bootstrap
-    // Exemplo: /api/movies/html?title=Matrix
+    /**
+     * Endpoint HTML: Busca filmes e retorna página HTML com Bootstrap.
+     * 
+     * SEPARAÇÃO: Endpoint dedicado para HTML (não mistura com JSON)
+     * 
+     * Exemplo: GET /api/movies/html?title=Matrix
+     */
     @GetMapping(value = "/html", produces = MediaType.TEXT_HTML_VALUE)
     public String searchMoviesHTML(@RequestParam String title) {
-        // Busca filmes pela API
-        String url = "http://www.omdbapi.com/?s=" + title + "&apikey=" + apiKey;
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-        MovieSearchResult result = movieService.parseSearchResults(response.getBody());
+        // 1. Busca JSON da API
+        String json = imdbApiClient.searchMoviesByTitle(title);
         
-        // Cria StringWriter para capturar o HTML gerado
+        // 2. Processa JSON
+        MovieSearchResult result = movieService.parseSearchResults(json);
+        
+        // 3. Gera HTML
         StringWriter stringWriter = new StringWriter();
-        
-        // Cria HTMLGenerator e gera o HTML
         HTMLGenerator htmlGenerator = new HTMLGenerator(stringWriter);
         htmlGenerator.generate(result.movies());
         
-        // Retorna o HTML gerado
+        // 4. Retorna HTML
         return stringWriter.toString();
     }
 
-    // Endpoint legado que retorna JSON bruto (mantido para compatibilidade)
+    /**
+     * Endpoint legado: Retorna JSON bruto da OMDb API.
+     * Mantido para compatibilidade com versões anteriores.
+     * 
+     * Exemplo: GET /api/movies/raw/search?title=Matrix
+     */
     @GetMapping("/raw/search")
     public String searchMoviesRaw(@RequestParam String title) {
-        String url = "http://www.omdbapi.com/?s=" + title + "&apikey=" + apiKey;
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-        return response.getBody();
+        return imdbApiClient.searchMoviesByTitle(title);
     }
 
 }
