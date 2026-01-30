@@ -692,3 +692,487 @@ Código mais limpo, organizado e seguindo boas práticas de engenharia de softwa
 2. **Baixo acoplamento**: Mudanças isoladas
 3. **Alta coesão**: Classes focadas
 4. **Fácil manutenção**: Código organizado
+
+---
+
+## 💾 Aula 5 (Parte 2): Filtros e Lista em Memória
+
+### Objetivo
+Implementar filtro por título e criar lista em memória para armazenar filmes.
+
+### O que foi criado
+1. **MovieRepository.java** - Repositório em memória para armazenar filmes
+2. **Campo ID no Movie** - Identificador único para cada filme
+3. **Novos endpoints** - Consultar e filtrar lista em memória
+4. **Atualização do MovieService** - Gera IDs e salva automaticamente
+
+### Conceitos Aprendidos
+
+#### **@Repository**
+```java
+@Repository
+public class MovieRepository { }
+```
+
+**O que é:**
+- Marca classe como componente de acesso a dados
+- Spring gerencia ciclo de vida
+- Semântica clara: esta classe gerencia dados
+
+**Diferença de outras anotações:**
+- `@Repository`: Acesso a dados (banco, memória, arquivo)
+- `@Service`: Lógica de negócio
+- `@Component`: Genérico
+- `@Controller`: Controlador web
+
+#### **AtomicLong para IDs**
+```java
+private final AtomicLong idGenerator = new AtomicLong(1);
+
+public Movie save(Movie movie) {
+    Long newId = idGenerator.getAndIncrement();
+    // ...
+}
+```
+
+**Por que AtomicLong?**
+- ✅ Thread-safe: Múltiplas requisições simultâneas
+- ✅ Incremento atômico: Garante IDs únicos
+- ✅ Simples: Não precisa sincronização manual
+
+**Alternativas:**
+- `Long` simples: ❌ Não thread-safe
+- `synchronized`: ✅ Funciona, mas mais complexo
+- `UUID`: ✅ Funciona, mas IDs grandes
+
+#### **Lista em Memória**
+```java
+private final List<Movie> movies = new ArrayList<>();
+```
+
+**Vantagens:**
+- ✅ Simplicidade: Não precisa configurar banco
+- ✅ Aprendizado: Foco em lógica de negócio
+- ✅ Rápido: Acesso instantâneo
+
+**Limitações:**
+- ❌ Dados perdidos ao reiniciar
+- ❌ Não escalável (apenas uma instância)
+- ❌ Sem transações
+- ❌ Para produção: usar banco de dados real
+
+#### **Stream.map para adicionar IDs**
+```java
+List<Movie> moviesWithIds = movies.stream()
+    .map(movie -> Movie.fromOmdbJson(
+        idCounter.getAndIncrement(), // Gera ID incremental
+        movie.title(),
+        movie.urlImage(),
+        movie.rating(),
+        movie.year()
+    ))
+    .collect(Collectors.toList());
+```
+
+**Como funciona:**
+1. `stream()`: Converte lista em stream
+2. `map()`: Transforma cada elemento
+3. `idCounter.getAndIncrement()`: Gera ID único
+4. `collect()`: Converte stream de volta em lista
+
+**Vantagens:**
+- ✅ Funcional: Código declarativo
+- ✅ Imutável: Não modifica lista original
+- ✅ Legível: Intenção clara
+
+#### **Filtro por Título (QueryParam)**
+```java
+@GetMapping("/memory/filter")
+public List<Movie> filterMoviesByTitle(@RequestParam String title) {
+    return movieRepository.findByTitleContaining(title);
+}
+```
+
+**Implementação do filtro:**
+```java
+public List<Movie> findByTitleContaining(String titleFilter) {
+    return movies.stream()
+        .filter(movie -> movie.title()
+            .toLowerCase()
+            .contains(titleFilter.toLowerCase()))
+        .collect(Collectors.toList());
+}
+```
+
+**Como funciona:**
+1. `stream()`: Converte lista em stream
+2. `filter()`: Filtra elementos que atendem condição
+3. `toLowerCase()`: Case-insensitive ("Matrix" = "matrix")
+4. `contains()`: Verifica se contém o texto
+5. `collect()`: Converte stream em lista
+
+**Exemplos:**
+- `title=Matrix` → "The Matrix", "Matrix Reloaded"
+- `title=mat` → "The Matrix" (case-insensitive)
+- `title=Inception` → "Inception"
+
+#### **@RequestParam(required = false)**
+```java
+@GetMapping("/memory/html")
+public String viewMoviesInMemoryHTML(
+    @RequestParam(required = false) String title
+) {
+    List<Movie> movies = (title != null && !title.isBlank()) 
+        ? movieRepository.findByTitleContaining(title)
+        : movieRepository.findAll();
+    // ...
+}
+```
+
+**O que faz:**
+- `required = false`: Parâmetro opcional
+- Se fornecido: filtra
+- Se não fornecido: retorna todos
+
+**Exemplos:**
+- `/memory/html` → Todos os filmes
+- `/memory/html?title=Matrix` → Filmes com "Matrix"
+
+### Novos Endpoints Implementados
+
+#### 1. Listar todos os filmes em memória
+```java
+@GetMapping("/memory")
+public List<Movie> getAllMoviesInMemory() {
+    return movieRepository.findAll();
+}
+```
+**Uso:** `GET /api/movies/memory`
+
+#### 2. Filtrar filmes por título
+```java
+@GetMapping("/memory/filter")
+public List<Movie> filterMoviesByTitle(@RequestParam String title) {
+    return movieRepository.findByTitleContaining(title);
+}
+```
+**Uso:** `GET /api/movies/memory/filter?title=Matrix`
+
+#### 3. Visualizar em HTML (com filtro opcional)
+```java
+@GetMapping(value = "/memory/html", produces = MediaType.TEXT_HTML_VALUE)
+public String viewMoviesInMemoryHTML(
+    @RequestParam(required = false) String title
+) {
+    // ...
+}
+```
+**Uso:** 
+- `GET /api/movies/memory/html` (todos)
+- `GET /api/movies/memory/html?title=Matrix` (filtrados)
+
+#### 4. Limpar memória
+```java
+@GetMapping("/memory/clear")
+public String clearMemory() {
+    long count = movieRepository.count();
+    movieRepository.deleteAll();
+    return "🗑️ " + count + " filmes removidos da memória";
+}
+```
+**Uso:** `GET /api/movies/memory/clear`
+
+### Fluxo Completo
+
+```
+1. Usuário busca "Matrix" na API
+   GET /api/movies/search?title=Matrix
+   ↓
+2. Controller chama ImdbApiClient
+   imdbApiClient.searchMoviesByTitle("Matrix")
+   ↓
+3. Client busca na OMDb API
+   Retorna JSON
+   ↓
+4. Service processa JSON
+   movieService.parseSearchResults(json)
+   ↓
+5. Service adiciona IDs usando Stream.map
+   movies.stream().map(movie -> addId(movie))
+   ↓
+6. Service salva no repositório
+   movieRepository.saveAll(moviesWithIds)
+   ↓
+7. Filmes ficam em memória
+   List<Movie> movies = [...]
+   ↓
+8. Usuário pode consultar/filtrar
+   GET /api/movies/memory/filter?title=Matrix
+```
+
+### Arquitetura Final (Dia 5 Completo)
+
+```
+Cliente (Browser/Postman)
+    ↓
+Controller (MovieController)
+    ├─ Orquestra fluxo
+    ├─ Valida entrada
+    └─ Formata resposta
+    ↓
+Client (ImdbApiClient)
+    ├─ Constrói URL
+    ├─ Adiciona API Key
+    └─ Executa HTTP
+    ↓
+API Externa (OMDb)
+    ↓
+Service (MovieService)
+    ├─ Parse JSON
+    ├─ Adiciona IDs (Stream.map)
+    └─ Salva no repositório
+    ↓
+Repository (MovieRepository)
+    ├─ Armazena em memória
+    ├─ Gera IDs (AtomicLong)
+    ├─ Filtra (Stream.filter)
+    └─ CRUD completo
+    ↓
+Model (Movie com ID)
+    ↓
+Generator (HTMLGenerator)
+    └─ Gera HTML
+    ↓
+Resposta (JSON ou HTML)
+```
+
+### Comparação: Antes vs Depois
+
+| Aspecto | Antes (Dia 5 Parte 1) | Depois (Dia 5 Parte 2) |
+|---------|----------------------|------------------------|
+| **Armazenamento** | Apenas retorna dados | Salva em memória |
+| **IDs** | Sem IDs | IDs automáticos |
+| **Filtros** | Apenas na API | Filtro local + API |
+| **Consulta** | Sempre busca API | Pode consultar memória |
+| **Performance** | Depende da API | Instantâneo (memória) |
+
+### Decisões de Design
+
+#### Por que Record com ID?
+```java
+public record Movie(
+    Long id,        // NOVO: ID único
+    String title,
+    String urlImage,
+    String rating,
+    String year
+) { }
+```
+
+**Motivos:**
+- ✅ Identificar filmes unicamente
+- ✅ Facilita operações CRUD
+- ✅ Permite referência direta
+- ✅ Prepara para banco de dados futuro
+
+#### Por que lista fora do método?
+```java
+@Repository
+public class MovieRepository {
+    private final List<Movie> movies = new ArrayList<>(); // Fora dos métodos
+}
+```
+
+**Motivos:**
+- ✅ Persistência entre requisições
+- ✅ Estado compartilhado
+- ✅ Singleton (Spring gerencia)
+- ❌ Dentro do método: lista seria recriada sempre
+
+#### Por que salvar automaticamente?
+```java
+public MovieSearchResult parseSearchResults(String json) {
+    // ... processa JSON
+    movieRepository.saveAll(moviesWithIds); // Salva automaticamente
+    return new MovieSearchResult(moviesWithIds, totalResults);
+}
+```
+
+**Motivos:**
+- ✅ Conveniência: Usuário não precisa chamar endpoint separado
+- ✅ Automático: Toda busca é salva
+- ✅ Simples: Menos endpoints
+
+### Resultado
+Sistema completo com armazenamento em memória, filtros e IDs automáticos.
+
+---
+
+## 🧪 Como Testar a Aula 5 (Parte 2)
+
+### Teste 1: Buscar e Salvar Automaticamente
+```bash
+# 1. Buscar "Matrix" (salva automaticamente)
+curl "http://localhost:8080/api/movies/search?title=Matrix"
+
+# 2. Verificar console:
+# ✅ Busca por título: Matrix
+#    Total de resultados: 4
+#    Filmes encontrados: 4
+# 💾 Total em memória: 4
+```
+
+### Teste 2: Consultar Lista em Memória
+```bash
+# Ver todos os filmes salvos
+curl http://localhost:8080/api/movies/memory
+
+# Resposta esperada:
+# [
+#   {"id":1,"title":"The Matrix","urlImage":"...","rating":"8.7","year":"1999"},
+#   {"id":2,"title":"The Matrix Reloaded","urlImage":"...","rating":"7.2","year":"2003"},
+#   ...
+# ]
+```
+
+### Teste 3: Filtrar por Título
+```bash
+# Buscar mais filmes
+curl "http://localhost:8080/api/movies/search?title=Inception"
+curl "http://localhost:8080/api/movies/search?title=Interstellar"
+
+# Filtrar apenas "Matrix"
+curl "http://localhost:8080/api/movies/memory/filter?title=Matrix"
+
+# Filtrar apenas "Inception"
+curl "http://localhost:8080/api/movies/memory/filter?title=Inception"
+```
+
+### Teste 4: Visualizar em HTML
+```
+# Abrir no navegador:
+http://localhost:8080/api/movies/memory/html
+http://localhost:8080/api/movies/memory/html?title=Matrix
+```
+
+### Teste 5: Limpar Memória
+```bash
+# Limpar todos os filmes
+curl http://localhost:8080/api/movies/memory/clear
+
+# Resposta: "🗑️ 12 filmes removidos da memória"
+
+# Verificar que está vazio
+curl http://localhost:8080/api/movies/memory
+# Resposta: []
+```
+
+### Teste 6: Verificar IDs Incrementais
+```bash
+# 1. Limpar memória
+curl http://localhost:8080/api/movies/memory/clear
+
+# 2. Buscar "Matrix" (IDs 1, 2, 3, 4)
+curl "http://localhost:8080/api/movies/search?title=Matrix"
+
+# 3. Buscar "Inception" (IDs 5, 6, 7, ...)
+curl "http://localhost:8080/api/movies/search?title=Inception"
+
+# 4. Ver todos (IDs devem ser sequenciais)
+curl http://localhost:8080/api/movies/memory
+```
+
+### Teste no Postman
+
+**Coleção de Testes:**
+
+1. **Buscar Matrix**
+   - Método: GET
+   - URL: `http://localhost:8080/api/movies/search?title=Matrix`
+   - Resultado: JSON com filmes + salvos em memória
+
+2. **Ver Memória**
+   - Método: GET
+   - URL: `http://localhost:8080/api/movies/memory`
+   - Resultado: Lista com IDs
+
+3. **Filtrar Matrix**
+   - Método: GET
+   - URL: `http://localhost:8080/api/movies/memory/filter?title=Matrix`
+   - Resultado: Apenas filmes com "Matrix" no título
+
+4. **HTML com Filtro**
+   - Método: GET
+   - URL: `http://localhost:8080/api/movies/memory/html?title=Matrix`
+   - Resultado: Página HTML
+
+5. **Limpar**
+   - Método: GET
+   - URL: `http://localhost:8080/api/movies/memory/clear`
+   - Resultado: Mensagem de confirmação
+
+### Observar Logs no Console
+
+```
+✅ Busca por título: Matrix
+   Total de resultados: 4
+   Filmes encontrados: 4
+💾 Filme salvo: ID=1, Título=The Matrix
+💾 Filme salvo: ID=2, Título=The Matrix Reloaded
+💾 Filme salvo: ID=3, Título=The Matrix Revolutions
+💾 Filme salvo: ID=4, Título=The Matrix Revisited
+💾 Total em memória: 4
+
+💾 Total de filmes em memória: 4
+
+🔍 Filtro aplicado: Matrix
+   Filmes encontrados: 4
+
+🗑️ Todos os filmes foram removidos da memória
+🗑️ 4 filmes removidos da memória
+```
+
+---
+
+## 📊 Estatísticas Atualizadas (Dia 5 Completo)
+
+- **Linhas de Código**: ~1200
+- **Classes**: 9 (+1 MovieRepository)
+- **Testes**: 4
+- **Endpoints**: 10 (+5 novos)
+- **Dependências**: 3 (Spring Web, Jackson, DevTools)
+- **Princípios SOLID**: ✅ Aplicados
+- **Padrões**: Repository, Service, DTO
+
+---
+
+## 🎓 Lições Aprendidas (Dia 5 Completo)
+
+### Parte 1: Refatoração
+1. **Encapsular** lógica HTTP em cliente dedicado
+2. **Separar** responsabilidades (Controller, Client, Service)
+3. **@Component** para classes reutilizáveis
+4. **Single Responsibility Principle**
+
+### Parte 2: Filtros e Memória
+1. **@Repository** para acesso a dados
+2. **AtomicLong** para IDs thread-safe
+3. **Stream.map** para transformar dados
+4. **Stream.filter** para filtrar dados
+5. **@RequestParam(required = false)** para parâmetros opcionais
+6. **Lista em memória** para armazenamento temporário
+
+### Boas Práticas
+1. **IDs automáticos** com AtomicLong
+2. **Filtros case-insensitive** com toLowerCase()
+3. **Logs informativos** para debug
+4. **Endpoints RESTful** bem organizados
+5. **Código funcional** com Streams
+6. **Imutabilidade** com Records
+
+### Arquitetura
+1. **Camadas bem definidas**: Controller → Client → Service → Repository → Model
+2. **Baixo acoplamento**: Mudanças isoladas
+3. **Alta coesão**: Classes focadas
+4. **Fácil manutenção**: Código organizado
+5. **Testabilidade**: Componentes independentes

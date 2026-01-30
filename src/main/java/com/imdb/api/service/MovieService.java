@@ -4,13 +4,22 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.imdb.api.model.Movie;
 import com.imdb.api.model.MovieSearchResult;
+import com.imdb.api.repository.MovieRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Service responsável por processar JSON da OMDb API e converter em objetos Movie.
+ * 
+ * ATUALIZAÇÃO DIA 5 (Parte 2):
+ * - Adiciona ID aos filmes usando Stream.map
+ * - Salva filmes no repositório em memória
+ * - Implementa filtro por título
  * 
  * Separa a lógica de parsing JSON do controller, seguindo princípios SOLID:
  * - Single Responsibility: Apenas processa JSON
@@ -20,9 +29,18 @@ import java.util.List;
 public class MovieService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // Injeta o repositório para salvar filmes em memória
+    @Autowired
+    private MovieRepository movieRepository;
+    
+    // Contador para gerar IDs únicos (thread-safe)
+    private final AtomicLong idCounter = new AtomicLong(1);
 
     /**
-     * Processa JSON de busca por título e retorna lista de Movies.
+     * Processa JSON de busca por título e retorna lista de Movies COM IDs.
+     * 
+     * NOVO: Usa Stream.map para adicionar IDs incrementais
      * 
      * JSON esperado da OMDb:
      * {
@@ -42,21 +60,36 @@ public class MovieService {
                 return new MovieSearchResult(List.of(), "0");
             }
             
+            // Usa Stream.map para processar cada filme e adicionar ID
             List<Movie> movies = new ArrayList<>();
             for (JsonNode movieNode : searchNode) {
-                Movie movie = Movie.fromOmdbJson(
+                movies.add(Movie.fromOmdbJson(
+                    null, // ID será gerado depois
                     movieNode.get("Title").asText(),
                     movieNode.has("Poster") ? movieNode.get("Poster").asText() : null,
                     movieNode.has("imdbRating") ? movieNode.get("imdbRating").asText() : "N/A",
                     movieNode.get("Year").asText()
-                );
-                movies.add(movie);
+                ));
             }
             
-            return new MovieSearchResult(movies, totalResults);
+            // Adiciona IDs usando Stream.map e salva no repositório
+            List<Movie> moviesWithIds = movies.stream()
+                    .map(movie -> Movie.fromOmdbJson(
+                        idCounter.getAndIncrement(), // Gera ID incremental
+                        movie.title(),
+                        movie.urlImage(),
+                        movie.rating(),
+                        movie.year()
+                    ))
+                    .collect(Collectors.toList());
+            
+            // Salva todos os filmes no repositório em memória
+            movieRepository.saveAll(moviesWithIds);
+            
+            return new MovieSearchResult(moviesWithIds, totalResults);
             
         } catch (Exception e) {
-            System.err.println("Erro ao processar JSON: " + e.getMessage());
+            System.err.println("❌ Erro ao processar JSON: " + e.getMessage());
             return new MovieSearchResult(List.of(), "0");
         }
     }
@@ -77,6 +110,7 @@ public class MovieService {
             JsonNode root = objectMapper.readTree(json);
             
             return Movie.fromOmdbJson(
+                idCounter.getAndIncrement(),
                 root.get("Title").asText(),
                 root.has("Poster") ? root.get("Poster").asText() : null,
                 root.has("imdbRating") ? root.get("imdbRating").asText() : "N/A",
@@ -84,8 +118,8 @@ public class MovieService {
             );
             
         } catch (Exception e) {
-            System.err.println("Erro ao processar JSON: " + e.getMessage());
-            return Movie.fromOmdbJson("Erro ao carregar filme", "", "0.0", "0000");
+            System.err.println("❌ Erro ao processar JSON: " + e.getMessage());
+            return Movie.fromOmdbJson(null, "Erro ao carregar filme", "", "0.0", "0000");
         }
     }
 }

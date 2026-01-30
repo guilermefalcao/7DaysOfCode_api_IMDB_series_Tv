@@ -80,26 +80,33 @@ mvnw.cmd test
 ## Como Testar
 
 ### Opção 1: Navegador
-Buscar filmes por título (JSON):
+
+#### Buscar na API OMDb:
 ```
 http://localhost:8080/api/movies/search?title=Matrix
-```
-
-Buscar filme por ID (JSON):
-```
 http://localhost:8080/api/movies/tt0133093
-```
-
-**NOVO:** Visualizar filmes em HTML:
-```
 http://localhost:8080/api/movies/html?title=Matrix
 ```
 
+#### **NOVO (Dia 5 Parte 2):** Consultar lista em memória:
+```
+http://localhost:8080/api/movies/memory
+http://localhost:8080/api/movies/memory/filter?title=Matrix
+http://localhost:8080/api/movies/memory/html
+http://localhost:8080/api/movies/memory/html?title=Matrix
+http://localhost:8080/api/movies/memory/clear
+```
+
 ### Opção 2: Postman
-1. Abra o Postman
-2. Crie uma nova requisição GET
-3. URL: `http://localhost:8080/api/movies/search?title=Inception`
-4. Clique em "Send"
+
+#### Testar busca na API:
+1. **GET** `http://localhost:8080/api/movies/search?title=Matrix`
+2. **GET** `http://localhost:8080/api/movies/tt0133093`
+
+#### Testar lista em memória:
+1. **GET** `http://localhost:8080/api/movies/memory` - Ver todos os filmes
+2. **GET** `http://localhost:8080/api/movies/memory/filter?title=Matrix` - Filtrar
+3. **GET** `http://localhost:8080/api/movies/memory/clear` - Limpar memória
 
 ### Opção 3: cURL
 ```bash
@@ -121,11 +128,13 @@ src/main/java/com/imdb/api/
 ├── controller/
 │   └── MovieController.java     # Controller REST (refatorado - Dia 5)
 ├── client/
-│   └── ImdbApiClient.java       # Cliente HTTP para OMDb API (NOVO - Dia 5)
+│   └── ImdbApiClient.java       # Cliente HTTP para OMDb API (Dia 5)
 ├── service/
-│   └── MovieService.java        # Service para processar JSON
+│   └── MovieService.java        # Service para processar JSON e salvar em memória
+├── repository/
+│   └── MovieRepository.java     # Repositório em memória (NOVO - Dia 5 Parte 2)
 ├── model/
-│   ├── Movie.java               # Record que representa um filme
+│   ├── Movie.java               # Record que representa um filme (com ID)
 │   └── MovieSearchResult.java   # Record com lista de filmes
 └── generator/
     └── HTMLGenerator.java       # Gerador de HTML com Bootstrap
@@ -209,7 +218,81 @@ src/test/resources/
 Guilherme Falcão
 
 ## Curso
-Alura - #7DaysOfCode - Dias 1, 2, 3, 4 e 5
+Alura - #7DaysOfCode - Dias 1, 2, 3, 4 e 5 (Completo)
 
 ## Repositório
 https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv
+
+---
+
+## 🆕 Endpoints Disponíveis (Dia 5 - Completo)
+
+### Buscar na API OMDb:
+| Endpoint | Método | Retorno | Descrição |
+|----------|--------|---------|-----------|
+| `/api/movies/search?title=Matrix` | GET | JSON | Lista de filmes da API |
+| `/api/movies/{imdbId}` | GET | JSON | Detalhes do filme |
+| `/api/movies/html?title=Matrix` | GET | HTML | Página web com filmes |
+| `/api/movies/raw/search?title=Matrix` | GET | JSON | JSON bruto (legado) |
+
+### **NOVO:** Consultar lista em memória:
+| Endpoint | Método | Retorno | Descrição |
+|----------|--------|---------|-----------|
+| `/api/movies/memory` | GET | JSON | Todos os filmes em memória |
+| `/api/movies/memory/filter?title=Matrix` | GET | JSON | Filtrar filmes por título |
+| `/api/movies/memory/html` | GET | HTML | Visualizar todos em HTML |
+| `/api/movies/memory/html?title=Matrix` | GET | HTML | Visualizar filtrados em HTML |
+| `/api/movies/memory/clear` | GET | String | Limpar lista em memória |
+
+---
+
+## 🧪 Como Testar o Exercício da Aula 5
+
+### Passo 1: Buscar filmes na API (salva automaticamente em memória)
+```bash
+# Buscar "Matrix"
+curl "http://localhost:8080/api/movies/search?title=Matrix"
+
+# Buscar "Inception"
+curl "http://localhost:8080/api/movies/search?title=Inception"
+
+# Buscar "Interstellar"
+curl "http://localhost:8080/api/movies/search?title=Interstellar"
+```
+
+### Passo 2: Consultar lista em memória
+```bash
+# Ver TODOS os filmes salvos
+curl http://localhost:8080/api/movies/memory
+
+# Filtrar por "Matrix"
+curl "http://localhost:8080/api/movies/memory/filter?title=Matrix"
+
+# Filtrar por "Inception"
+curl "http://localhost:8080/api/movies/memory/filter?title=Inception"
+```
+
+### Passo 3: Visualizar em HTML
+```
+# Abrir no navegador:
+http://localhost:8080/api/movies/memory/html
+http://localhost:8080/api/movies/memory/html?title=Matrix
+```
+
+### Passo 4: Limpar memória
+```bash
+curl http://localhost:8080/api/movies/memory/clear
+```
+
+### Observar logs no console:
+```
+✅ Busca por título: Matrix
+   Total de resultados: 4
+   Filmes encontrados: 4
+💾 Total em memória: 4
+
+🔍 Filtro aplicado: Matrix
+   Filmes encontrados: 4
+
+🗑️ 4 filmes removidos da memória
+```
