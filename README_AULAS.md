@@ -1176,3 +1176,509 @@ curl http://localhost:8080/api/movies/memory
 3. **Alta coesão**: Classes focadas
 4. **Fácil manutenção**: Código organizado
 5. **Testabilidade**: Componentes independentes
+
+---
+
+## ⭐ Aula 6: Sistema de Favoritos com CRUD Completo
+
+### Objetivo
+Implementar sistema de favoritos usando todos os métodos HTTP (POST, GET, PUT, DELETE).
+
+### O que foi criado
+1. **FavoritoRepository.java** - Repositório para gerenciar favoritos
+2. **FavoritoController.java** - Controller REST com CRUD completo
+3. **FavoritoControllerTests.java** - 10 testes de integração
+4. **7 novos endpoints** - Sistema completo de favoritos
+
+### Conceitos Aprendidos
+
+#### **@PostMapping**
+```java
+@PostMapping("/{filmeId}")
+public ResponseEntity<String> addFavorito(@PathVariable Long filmeId) {
+    // ...
+}
+```
+
+**O que é:**
+- Marca método como endpoint POST
+- Usado para criar/adicionar recursos
+- Retorna status 201 Created quando sucesso
+
+**Quando usar:**
+- Criar novos recursos
+- Adicionar itens a uma lista
+- Operações que modificam estado
+
+**Características:**
+- ❌ Não é idempotente (múltiplas chamadas criam múltiplos recursos)
+- ✅ Pode receber dados no body
+- ✅ Retorna recurso criado
+
+#### **@DeleteMapping**
+```java
+@DeleteMapping("/{id}")
+public ResponseEntity<String> removeFavorito(@PathVariable Long id) {
+    // ...
+}
+```
+
+**O que é:**
+- Marca método como endpoint DELETE
+- Usado para remover recursos
+- Retorna status 200 OK ou 204 No Content
+
+**Quando usar:**
+- Remover recursos
+- Deletar itens de uma lista
+- Operações de exclusão
+
+**Características:**
+- ✅ Idempotente (múltiplas chamadas têm mesmo efeito)
+- ❌ Não recebe body
+- ✅ Pode retornar mensagem de confirmação
+
+#### **@PutMapping**
+```java
+@PutMapping
+public ResponseEntity<String> replaceFavoritos(@RequestBody List<Long> ids) {
+    // ...
+}
+```
+
+**O que é:**
+- Marca método como endpoint PUT
+- Usado para atualizar/substituir recursos
+- Retorna status 200 OK
+
+**Quando usar:**
+- Atualizar recurso completo
+- Substituir lista inteira
+- Operações de atualização total
+
+**Características:**
+- ✅ Idempotente (múltiplas chamadas têm mesmo efeito)
+- ✅ Recebe dados no body
+- ✅ Substitui recurso completo
+
+**Diferença PUT vs PATCH:**
+- **PUT**: Substitui recurso completo
+- **PATCH**: Atualiza parcialmente
+
+#### **@PathVariable**
+```java
+@PostMapping("/{filmeId}")
+public ResponseEntity<String> addFavorito(@PathVariable Long filmeId) {
+    // filmeId capturado da URL
+}
+```
+
+**O que faz:**
+- Captura variáveis da URL
+- Converte automaticamente para o tipo especificado
+- Obrigatório por padrão
+
+**Exemplo:**
+- URL: `/api/favoritos/123`
+- `filmeId` = 123
+
+#### **@RequestBody**
+```java
+@PutMapping
+public ResponseEntity<String> replaceFavoritos(@RequestBody List<Long> ids) {
+    // ids recebidos do corpo da requisição
+}
+```
+
+**O que faz:**
+- Recebe dados do corpo da requisição
+- Converte JSON automaticamente para objeto Java
+- Usado em POST e PUT
+
+**Exemplo:**
+```json
+// Body da requisição
+[1, 2, 3]
+
+// Convertido para
+List<Long> ids = Arrays.asList(1L, 2L, 3L);
+```
+
+#### **ResponseEntity**
+```java
+return ResponseEntity
+    .status(HttpStatus.CREATED)
+    .body("⭐ Filme adicionado aos favoritos");
+```
+
+**O que é:**
+- Permite controlar resposta HTTP completa
+- Define status HTTP customizado
+- Adiciona headers se necessário
+- Mais flexível que retornar apenas objeto
+
+**Vantagens:**
+- ✅ Controle total sobre resposta
+- ✅ Status HTTP apropriados
+- ✅ Headers customizados
+- ✅ Mensagens de erro/sucesso
+
+**Status HTTP Comuns:**
+- **200 OK**: Sucesso geral
+- **201 Created**: Recurso criado
+- **204 No Content**: Sucesso sem conteúdo
+- **400 Bad Request**: Requisição inválida
+- **404 Not Found**: Recurso não encontrado
+- **409 Conflict**: Conflito (ex: duplicado)
+- **500 Internal Server Error**: Erro no servidor
+
+#### **Métodos HTTP - Resumo Completo**
+
+| Método | Uso | Idempotente | Body | Exemplo |
+|--------|-----|-------------|------|----------|
+| **GET** | Buscar/Listar | ✅ Sim | ❌ Não | Listar favoritos |
+| **POST** | Criar/Adicionar | ❌ Não | ✅ Opcional | Adicionar favorito |
+| **PUT** | Atualizar/Substituir | ✅ Sim | ✅ Sim | Substituir lista |
+| **PATCH** | Atualizar Parcial | ❌ Não | ✅ Sim | Atualizar campo |
+| **DELETE** | Remover | ✅ Sim | ❌ Não | Remover favorito |
+
+**Idempotente:** Múltiplas chamadas idênticas têm o mesmo efeito que uma única chamada
+
+### Endpoints Implementados
+
+#### 1. POST - Adicionar Favorito
+```java
+@PostMapping("/{filmeId}")
+public ResponseEntity<String> addFavorito(@PathVariable Long filmeId) {
+    // Busca filme na lista geral
+    // Adiciona aos favoritos
+    // Retorna 201 Created ou 409 Conflict
+}
+```
+**Uso:** `POST /api/favoritos/1`
+
+#### 2. GET - Listar Todos
+```java
+@GetMapping
+public ResponseEntity<List<Movie>> getAllFavoritos() {
+    return ResponseEntity.ok(favoritoRepository.findAll());
+}
+```
+**Uso:** `GET /api/favoritos`
+
+#### 3. GET - Buscar por ID
+```java
+@GetMapping("/{id}")
+public ResponseEntity<?> getFavoritoById(@PathVariable Long id) {
+    // Retorna favorito ou 404
+}
+```
+**Uso:** `GET /api/favoritos/1`
+
+#### 4. GET - Verificar Favorito
+```java
+@GetMapping("/check/{id}")
+public ResponseEntity<Boolean> isFavorito(@PathVariable Long id) {
+    return ResponseEntity.ok(favoritoRepository.isFavorito(id));
+}
+```
+**Uso:** `GET /api/favoritos/check/1`
+
+#### 5. DELETE - Remover Favorito
+```java
+@DeleteMapping("/{id}")
+public ResponseEntity<String> removeFavorito(@PathVariable Long id) {
+    // Remove favorito
+    // Retorna 200 OK ou 404 Not Found
+}
+```
+**Uso:** `DELETE /api/favoritos/1`
+
+#### 6. DELETE - Remover Todos
+```java
+@DeleteMapping
+public ResponseEntity<String> removeAllFavoritos() {
+    long count = favoritoRepository.count();
+    favoritoRepository.deleteAll();
+    return ResponseEntity.ok("🗑️ " + count + " favoritos removidos");
+}
+```
+**Uso:** `DELETE /api/favoritos`
+
+#### 7. PUT - Substituir Lista
+```java
+@PutMapping
+public ResponseEntity<String> replaceFavoritos(@RequestBody List<Long> ids) {
+    // Limpa favoritos atuais
+    // Adiciona novos favoritos
+    // Retorna mensagem com resultado
+}
+```
+**Uso:** `PUT /api/favoritos` com body `[1, 2, 3]`
+
+### Validações Implementadas
+
+#### 1. Prevenir Duplicados
+```java
+if (favoritoRepository.isFavorito(movie.id())) {
+    return ResponseEntity
+        .status(HttpStatus.CONFLICT)
+        .body("⚠️ Filme já está nos favoritos");
+}
+```
+
+#### 2. Validar Existência
+```java
+Optional<Movie> movieOpt = movieRepository.findById(filmeId);
+if (movieOpt.isEmpty()) {
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body("❌ Filme não encontrado");
+}
+```
+
+#### 3. Mensagens Claras
+```java
+return ResponseEntity
+    .status(HttpStatus.CREATED)
+    .body("⭐ Filme adicionado aos favoritos: " + movie.title());
+```
+
+### Testes Implementados
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class FavoritoControllerTests {
+    
+    @Test
+    void shouldAddFavoritoSuccessfully() {
+        // Testa POST com sucesso
+    }
+    
+    @Test
+    void shouldReturnConflictWhenAddingDuplicateFavorito() {
+        // Testa duplicado (409 Conflict)
+    }
+    
+    @Test
+    void shouldReturnNotFoundWhenAddingNonExistentMovie() {
+        // Testa filme inexistente (404)
+    }
+    
+    // ... mais 7 testes
+}
+```
+
+**10 testes implementados:**
+1. ✅ Adicionar favorito com sucesso
+2. ✅ Tentar adicionar duplicado
+3. ✅ Tentar adicionar filme inexistente
+4. ✅ Listar todos os favoritos
+5. ✅ Buscar favorito por ID
+6. ✅ Verificar se é favorito
+7. ✅ Remover favorito
+8. ✅ Remover todos os favoritos
+9. ✅ Substituir lista de favoritos
+10. ✅ Fluxo completo (integração)
+
+### Arquitetura Final (Dia 6)
+
+```
+Cliente (Postman/Browser)
+    ↓
+FavoritoController
+    ├─ POST /favoritos/{id}
+    ├─ GET /favoritos
+    ├─ GET /favoritos/{id}
+    ├─ GET /favoritos/check/{id}
+    ├─ DELETE /favoritos/{id}
+    ├─ DELETE /favoritos
+    └─ PUT /favoritos
+    ↓
+FavoritoRepository
+    ├─ addFavorito()
+    ├─ findAll()
+    ├─ findById()
+    ├─ isFavorito()
+    ├─ removeFavorito()
+    ├─ deleteAll()
+    └─ count()
+    ↓
+MovieRepository
+    └─ findById() (busca filme original)
+    ↓
+Model (Movie)
+```
+
+### Comparação: Antes vs Depois
+
+| Aspecto | Antes (Dia 5) | Depois (Dia 6) |
+|---------|---------------|----------------|
+| **Métodos HTTP** | Apenas GET | GET, POST, PUT, DELETE |
+| **Favoritos** | Não existe | Sistema completo |
+| **Validações** | Básicas | Duplicados, existência |
+| **Status HTTP** | 200, 404 | 200, 201, 404, 409 |
+| **Testes** | 4 testes | 14 testes (4 + 10) |
+
+### Decisões de Design
+
+#### Por que repositório separado?
+```java
+@Repository
+public class FavoritoRepository {
+    private final List<Movie> favoritos = new ArrayList<>();
+}
+```
+
+**Motivos:**
+- ✅ Separação de responsabilidades
+- ✅ Lista de favoritos é diferente da lista geral
+- ✅ Facilita operações específicas
+- ✅ Evita confusão entre listas
+
+#### Por que não gerar novos IDs?
+**Motivos:**
+- ✅ Favoritos referenciam filmes existentes
+- ✅ Mantém ID original do filme
+- ✅ Evita duplicação de dados
+- ✅ Facilita relacionamento
+
+#### Por que ResponseEntity?
+**Motivos:**
+- ✅ Controle total sobre resposta
+- ✅ Status HTTP apropriados
+- ✅ Mensagens customizadas
+- ✅ Mais profissional
+
+### Resultado
+Sistema completo de favoritos com CRUD, validações, testes e documentação.
+
+---
+
+## 🧪 Como Testar a Aula 6
+
+### Teste 1: Adicionar Favorito (POST)
+```bash
+# 1. Buscar filmes primeiro
+curl "http://localhost:8080/api/movies/search?title=Matrix"
+
+# 2. Adicionar favorito
+curl -X POST http://localhost:8080/api/favoritos/1
+# Esperado: "⭐ Filme adicionado aos favoritos: The Matrix"
+```
+
+### Teste 2: Listar Favoritos (GET)
+```bash
+curl http://localhost:8080/api/favoritos
+# Esperado: Array JSON com favoritos
+```
+
+### Teste 3: Verificar Favorito (GET)
+```bash
+curl http://localhost:8080/api/favoritos/check/1
+# Esperado: true
+```
+
+### Teste 4: Remover Favorito (DELETE)
+```bash
+curl -X DELETE http://localhost:8080/api/favoritos/1
+# Esperado: "🗑️ Filme removido dos favoritos"
+```
+
+### Teste 5: Substituir Lista (PUT)
+```bash
+curl -X PUT http://localhost:8080/api/favoritos \
+  -H "Content-Type: application/json" \
+  -d '[1,2,3]'
+# Esperado: "🔄 Lista de favoritos atualizada: 3 adicionados, 0 não encontrados"
+```
+
+### Teste no Postman
+Consulte: **GUIA_TESTES_AULA6.md**
+
+### Testes Automatizados
+```bash
+mvnw.cmd test -Dtest=FavoritoControllerTests
+# Esperado: Tests run: 10, Failures: 0, Errors: 0
+```
+
+---
+
+## 📊 Estatísticas Atualizadas (Dia 6 Completo)
+
+- **Linhas de Código**: ~1500
+- **Classes**: 11 (+2 FavoritoRepository e FavoritoController)
+- **Testes**: 14 (+10 FavoritoControllerTests)
+- **Endpoints**: 17 (+7 novos)
+- **Dependências**: 3 (Spring Web, Jackson, DevTools)
+- **Princípios SOLID**: ✅ Aplicados
+- **Padrões**: Repository, Service, DTO, REST
+- **Métodos HTTP**: GET, POST, PUT, DELETE
+
+---
+
+## 🎓 Lições Aprendidas (Projeto Completo)
+
+### Aula 1: Consumindo API
+1. RestTemplate para chamadas HTTP
+2. @RestController e @GetMapping
+3. Variáveis de ambiente
+
+### Aula 2: Testes
+1. @SpringBootTest para testes de integração
+2. TestRestTemplate
+3. Assertions do JUnit
+
+### Aula 3: Modelagem
+1. Records para imutabilidade
+2. Separação de responsabilidades
+3. Service layer
+
+### Aula 4: HTML
+1. Text Blocks do Java 17
+2. Writer Pattern
+3. Bootstrap CSS
+
+### Aula 5 (Parte 1): Refatoração
+1. @Component para encapsulamento
+2. Single Responsibility Principle
+3. Injeção de dependências
+
+### Aula 5 (Parte 2): Filtros e Memória
+1. @Repository para acesso a dados
+2. AtomicLong para IDs thread-safe
+3. Stream.map e Stream.filter
+4. @RequestParam(required=false)
+
+### Aula 6: Favoritos (CRUD)
+1. @PostMapping para criar recursos
+2. @DeleteMapping para remover recursos
+3. @PutMapping para atualizar recursos
+4. @PathVariable para capturar IDs
+5. @RequestBody para receber dados
+6. ResponseEntity para controlar respostas
+7. Status HTTP apropriados
+8. Validações completas
+9. Testes de integração
+10. REST API completa
+
+### Boas Práticas Aplicadas
+1. ✅ Nunca commitar chaves de API
+2. ✅ Usar variáveis de ambiente
+3. ✅ Escrever testes automatizados
+4. ✅ Separar responsabilidades
+5. ✅ Preferir imutabilidade
+6. ✅ Código limpo e comentado
+7. ✅ Validar dados de entrada
+8. ✅ Status HTTP corretos
+9. ✅ Mensagens claras
+10. ✅ Documentação completa
+
+### Arquitetura Final
+1. **Camadas bem definidas**: Controller → Client → Service → Repository → Model
+2. **Baixo acoplamento**: Mudanças isoladas
+3. **Alta coesão**: Classes focadas
+4. **Fácil manutenção**: Código organizado
+5. **Testabilidade**: Componentes independentes
+6. **REST completo**: GET, POST, PUT, DELETE
+7. **Validações**: Duplicados, existência, erros

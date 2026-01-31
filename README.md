@@ -1,9 +1,9 @@
 # 7DaysOfCode - API IMDB
 
-Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dias 1, 2, 3, 4 e 5.
+Projeto desenvolvido durante o desafio #7DaysOfCode da Alura - Dias 1, 2, 3, 4, 5 e 6 (COMPLETO).
 
 ## Descrição
-API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie Database), permitindo buscar informações sobre filmes com testes de integração.
+API REST para consumir dados de filmes do IMDB usando a OMDb API (The Open Movie Database), com sistema completo de favoritos, filtros e testes de integração.
 
 ## Tecnologias Utilizadas
 - Java 17
@@ -126,13 +126,15 @@ Invoke-WebRequest -Uri http://localhost:8080/api/movies/tt0133093
 src/main/java/com/imdb/api/
 ├── ImdbApiApplication.java      # Classe principal com Bean do RestTemplate
 ├── controller/
-│   └── MovieController.java     # Controller REST (refatorado - Dia 5)
+│   ├── MovieController.java     # Controller REST (refatorado - Dia 5)
+│   └── FavoritoController.java  # Controller de Favoritos (NOVO - Dia 6)
 ├── client/
 │   └── ImdbApiClient.java       # Cliente HTTP para OMDb API (Dia 5)
 ├── service/
 │   └── MovieService.java        # Service para processar JSON e salvar em memória
 ├── repository/
-│   └── MovieRepository.java     # Repositório em memória (NOVO - Dia 5 Parte 2)
+│   ├── MovieRepository.java     # Repositório em memória (Dia 5)
+│   └── FavoritoRepository.java  # Repositório de Favoritos (NOVO - Dia 6)
 ├── model/
 │   ├── Movie.java               # Record que representa um filme (com ID)
 │   └── MovieSearchResult.java   # Record com lista de filmes
@@ -140,7 +142,8 @@ src/main/java/com/imdb/api/
     └── HTMLGenerator.java       # Gerador de HTML com Bootstrap
 
 src/test/java/com/imdb/api/
-└── ImdbApiApplicationTests.java # Testes de integração dos endpoints
+├── ImdbApiApplicationTests.java # Testes de integração dos endpoints
+└── FavoritoControllerTests.java # Testes de Favoritos (NOVO - Dia 6)
 
 src/test/resources/
 └── application-test.properties  # Configurações para testes
@@ -218,14 +221,14 @@ src/test/resources/
 Guilherme Falcão
 
 ## Curso
-Alura - #7DaysOfCode - Dias 1, 2, 3, 4 e 5 (Completo)
+Alura - #7DaysOfCode - Dias 1, 2, 3, 4, 5 e 6 (COMPLETO)
 
 ## Repositório
 https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv
 
 ---
 
-## 🆕 Endpoints Disponíveis (Dia 5 - Completo)
+## 🆕 Endpoints Disponíveis (Completo)
 
 ### Buscar na API OMDb:
 | Endpoint | Método | Retorno | Descrição |
@@ -235,7 +238,7 @@ https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv
 | `/api/movies/html?title=Matrix` | GET | HTML | Página web com filmes |
 | `/api/movies/raw/search?title=Matrix` | GET | JSON | JSON bruto (legado) |
 
-### **NOVO:** Consultar lista em memória:
+### Consultar lista em memória:
 | Endpoint | Método | Retorno | Descrição |
 |----------|--------|---------|-----------|
 | `/api/movies/memory` | GET | JSON | Todos os filmes em memória |
@@ -243,6 +246,17 @@ https://github.com/guilermefalcao/7DaysOfCode_api_IMDB_series_Tv
 | `/api/movies/memory/html` | GET | HTML | Visualizar todos em HTML |
 | `/api/movies/memory/html?title=Matrix` | GET | HTML | Visualizar filtrados em HTML |
 | `/api/movies/memory/clear` | GET | String | Limpar lista em memória |
+
+### **NOVO (Dia 6):** Sistema de Favoritos:
+| Endpoint | Método | Retorno | Descrição |
+|----------|--------|---------|-----------|
+| `/api/favoritos/{id}` | POST | String | Adicionar filme aos favoritos |
+| `/api/favoritos` | GET | JSON | Listar todos os favoritos |
+| `/api/favoritos/{id}` | GET | JSON | Buscar favorito por ID |
+| `/api/favoritos/check/{id}` | GET | Boolean | Verificar se é favorito |
+| `/api/favoritos/{id}` | DELETE | String | Remover favorito |
+| `/api/favoritos` | DELETE | String | Remover todos os favoritos |
+| `/api/favoritos` | PUT | String | Substituir lista de favoritos |
 
 ---
 
